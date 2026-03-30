@@ -1,0 +1,63 @@
+name: Deploy DVWA to ROSA
+
+on:
+  push:
+    branches: [ master, main ] # Covers both naming conventions
+
+permissions:
+  id-token: write # Required for AWS OIDC authentication
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Push DVWA Image
+        env:
+          ECR_REGISTRY: 273434037588.dkr.ecr.us-east-1.amazonaws.com
+          ECR_REPOSITORY: dvwa-repo
+          IMAGE_TAG: latest
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: OpenShift Login
+        uses: redhat-actions/oc-login@v1
+        with:
+          openshift_server_url: https://api.dvwa-rosa.nym5.p3.openshiftapps.com:443
+          openshift_token: ${{ secrets.ROSA_TOKEN }}
+          insecure_skip_tls_verify: true
+
+      - name: Deploy to ROSA
+        run: |
+          # Ensure the project exists
+          oc project dvwa-prod || oc new-project dvwa-prod
+          
+          # Deploy the application
+          # This command creates the app if it doesn't exist, or updates the image if it does
+          oc new-app --name=dvwa \
+            --docker-image=273434037588.dkr.ecr.us-east-1.amazonaws.com/dvwa-repo:latest \
+            --confirm || \
+          oc set image deployment/dvwa dvwa=273434037588.dkr.ecr.us-east-1.amazonaws.com/dvwa-repo:latest
+          
+          # Expose the service to create a public URL
+          oc expose svc/dvwa || echo "Route already exists"
+          
+          # Force a rollout to ensure the latest image is used
+          oc rollout restart deployment/dvwa
+          
+          # Print the final URL
+          echo "DVWA is live at: http://$(oc get route dvwa -n dvwa-prod -o jsonpath='{.spec.host}')"
