@@ -50,7 +50,7 @@ jobs:
           WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
           WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
         run: |
-          wizcli docker scan --image $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          wizcli scan container-image $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
       
       - name: Wait for scan indexing
         run: sleep 120
