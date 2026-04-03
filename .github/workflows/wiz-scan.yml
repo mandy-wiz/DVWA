@@ -45,6 +45,15 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
       
+      - name: Get image digest
+        id: get-digest
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG)
+          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+          echo "Image digest: $DIGEST"
+      
       - name: Download Wiz CLI
         run: |
           curl -Lo wizcli https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-amd64
@@ -52,18 +61,16 @@ jobs:
           sudo mv wizcli /usr/local/bin/
           wizcli version
       
-      - name: Scan image with Wiz
+      - name: Scan image with Wiz (by digest)
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
           WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
         run: |
-          wizcli docker scan --image $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          wizcli docker scan --image ${{ steps.get-digest.outputs.digest }}
       
-      - name: Tag image as trusted in Wiz
+      - name: Tag image as trusted in Wiz (by digest)
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
           WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
         run: |
-          wizcli docker tag --image $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          wizcli docker tag --image ${{ steps.get-digest.outputs.digest }}
