@@ -47,12 +47,10 @@ jobs:
       - name: Scan image with Wiz
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
-          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+          WIZCLI_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZCLI_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
         run: |
-          wizcli docker scan --image $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
-            --client-id "$WIZ_CLIENT_ID" \
-            --client-secret "$WIZ_CLIENT_SECRET"
+          wizcli docker scan --image $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
       
       - name: Wait for scan indexing
         run: sleep 120
@@ -60,16 +58,14 @@ jobs:
       - name: Tag image in Wiz
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
-          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+          WIZCLI_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZCLI_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
         run: |
           wizcli docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
             --tag "git-commit=${{ github.sha }}" \
             --tag "git-branch=${{ github.ref_name }}" \
             --tag "scanned=true" \
-            --tag "environment=production" \
-            --client-id "$WIZ_CLIENT_ID" \
-            --client-secret "$WIZ_CLIENT_SECRET"
+            --tag "environment=production"
         continue-on-error: true
       
       - name: Push image to ECR
@@ -77,4 +73,4 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
