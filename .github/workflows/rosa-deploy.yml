@@ -5,7 +5,6 @@ on:
     branches: [ master, main ]
 
 permissions:
-  id-token: write
   contents: read
 
 jobs:
@@ -18,7 +17,8 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
       - name: Login to Amazon ECR
@@ -34,7 +34,13 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      # ADD WIZ CLI SCANNING HERE
+      - name: Get Image Digest
+        id: get-digest
+        run: |
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' 273434037588.dkr.ecr.us-east-1.amazonaws.com/dvwa-repo:latest)
+          echo "IMAGE_DIGEST=$DIGEST" >> $GITHUB_OUTPUT
+          echo "Image digest: $DIGEST"
+
       - name: Download Wiz CLI
         run: |
           curl -o wizcli https://downloads.wiz.io/wizcli/latest/wizcli-linux-amd64
@@ -46,7 +52,11 @@ jobs:
 
       - name: Scan Image with Wiz CLI
         run: |
-          ./wizcli docker scan --image 273434037588.dkr.ecr.us-east-1.amazonaws.com/dvwa-repo:latest --policy-hits-only --policy "Image Trust Policy"
+          ./wizcli docker scan --image ${{ steps.get-digest.outputs.IMAGE_DIGEST }} --policy-hits-only --policy "test-regions"
+
+      - name: Tag Image as Trusted
+        run: |
+          ./wizcli docker tag --image ${{ steps.get-digest.outputs.IMAGE_DIGEST }}
 
       - name: OpenShift Login
         uses: redhat-actions/oc-login@v1
@@ -59,9 +69,9 @@ jobs:
         run: |
           oc project dvwa-prod || oc new-project dvwa-prod
           oc new-app --name=dvwa \
-            --docker-image=273434037588.dkr.ecr.us-east-1.amazonaws.com/dvwa-repo:latest \
+            --docker-image=${{ steps.get-digest.outputs.IMAGE_DIGEST }} \
             --confirm || \
-          oc set image deployment/dvwa dvwa=273434037588.dkr.ecr.us-east-1.amazonaws.com/dvwa-repo:latest
+          oc set image deployment/dvwa dvwa=${{ steps.get-digest.outputs.IMAGE_DIGEST }}
           oc expose svc/dvwa || echo "Route already exists"
           oc rollout restart deployment/dvwa
           echo "DVWA is live at: http://$(oc get route dvwa -n dvwa-prod -o jsonpath='{.spec.host}')"
