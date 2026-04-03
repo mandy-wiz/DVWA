@@ -40,7 +40,7 @@ jobs:
       
       - name: Download Wiz CLI
         run: |
-          curl -o wizcli https://downloads.wiz.io/wizcli/latest/wizcli-linux-amd64
+          curl -o wizcli https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-amd64
           chmod +x wizcli
           sudo mv wizcli /usr/local/bin/
       
@@ -51,22 +51,6 @@ jobs:
           WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
         run: |
           wizcli scan container-image $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-      
-      - name: Wait for scan indexing
-        run: sleep 120
-      
-      - name: Tag image in Wiz
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
-          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
-        run: |
-          wizcli docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
-            --tag "git-commit=${{ github.sha }}" \
-            --tag "git-branch=${{ github.ref_name }}" \
-            --tag "scanned=true" \
-            --tag "environment=production"
-        continue-on-error: true
       
       - name: Push image to ECR
         env:
