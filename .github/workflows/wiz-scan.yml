@@ -61,12 +61,12 @@ jobs:
           sudo mv wizcli /usr/local/bin/
           wizcli version
       
-      - name: Scan image with Wiz (by digest)
+      - name: Scan image with Wiz (by digest with test-regions policy)
         env:
           WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
           WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
         run: |
-          wizcli docker scan --image ${{ steps.get-digest.outputs.digest }}
+          wizcli docker scan --image ${{ steps.get-digest.outputs.digest }} --policy "test-regions"
       
       - name: Tag image as trusted in Wiz (by digest)
         env:
