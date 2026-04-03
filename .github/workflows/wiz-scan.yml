@@ -2,9 +2,10 @@ name: Build and Scan with Wiz
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master, main, develop]  # Add master here
   pull_request:
-    branches: [main]
+    branches: [master, main]
+  workflow_dispatch:  # Add this to allow manual runs
 
 env:
   AWS_REGION: us-east-1
