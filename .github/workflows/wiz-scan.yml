@@ -47,8 +47,8 @@ jobs:
       - name: Scan image with Wiz
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          WIZCLI_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
-          WIZCLI_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
         run: |
           wizcli docker scan --image $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
       
@@ -58,8 +58,8 @@ jobs:
       - name: Tag image in Wiz
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          WIZCLI_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
-          WIZCLI_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
         run: |
           wizcli docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
             --tag "git-commit=${{ github.sha }}" \
@@ -73,4 +73,4 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
